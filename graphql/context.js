@@ -1,15 +1,25 @@
-import jwt from "jsonwebtoken";
+const jwt = require('jsonwebtoken');
+const User = require('../models/user');
 
-export function buildContext({ request }) {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.split(" ")[1];
+require('dotenv').config();
 
-  if (!token) return { user: null };
+const JWT_SECRET = process.env.JWT_SECRET;
 
-  try {
-    const user = jwt.verify(token, process.env.JWT_SECRET);
-    return { user };
-  } catch {
-    return { user: null };
+async function buildContext({ request }) {
+  const authHeader = request.headers.get('authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+
+  let user = null;
+  if (token) {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      user = await User.findById(payload.userId || payload.id);
+    } catch {
+      user = null;
+    }
   }
+
+  return { user };
 }
+
+module.exports = { buildContext };
